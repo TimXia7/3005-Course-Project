@@ -39,7 +39,6 @@ def createTables():
             CREATE TABLE Teams (
                 id INT PRIMARY KEY,
                 name VARCHAR(255),
-                gender VARCHAR(50),
                 country VARCHAR(255)
             );
                     
@@ -74,7 +73,7 @@ def createTables():
             );
 
             CREATE TABLE Events (
-                event_id INT PRIMARY KEY,
+                event_id VARCHAR(255) PRIMARY KEY,
                 match_id INT,
                 index INT,
                 period INT,
@@ -138,7 +137,7 @@ def createTables():
             );
                     
             CREATE TABLE Shots (
-                event_id INT PRIMARY KEY,
+                event_id VARCHAR(255) PRIMARY KEY,
                 end_location_x FLOAT,
                 end_location_y FLOAT,
                 key_pass_id VARCHAR(255),
@@ -152,7 +151,7 @@ def createTables():
             );
 
             CREATE TABLE Passes (
-                event_id INT PRIMARY KEY,
+                event_id VARCHAR(255) PRIMARY KEY,
                 length FLOAT,
                 angle FLOAT,
                 end_location_x FLOAT,
@@ -174,14 +173,12 @@ def createTables():
             );
 
             CREATE TABLE Dribbles (
-                event_id INT PRIMARY KEY,
+                event_id VARCHAR(255) PRIMARY KEY,
                 name VARCHAR(255),
                 under_pressure BOOLEAN,
                 complete BOOLEAN,
                 FOREIGN KEY (event_id) REFERENCES Events(event_id)
             );
-
-
 
 
                     
@@ -214,6 +211,20 @@ def dropTables():
         )
         cur = conn.cursor()  
 
+        # All drops
+        # DROP TABLE IF EXISTS Dribbles;
+        # DROP TABLE IF EXISTS Passes;
+        # DROP TABLE IF EXISTS Shots;
+        # DROP TABLE IF EXISTS Cards;
+        # DROP TABLE IF EXISTS PlayerPositions;
+        # DROP TABLE IF EXISTS Lineups;
+        # DROP TABLE IF EXISTS Managers;
+        # DROP TABLE IF EXISTS Events;
+        # DROP TABLE IF EXISTS Players;
+        # DROP TABLE IF EXISTS Matches;
+        # DROP TABLE IF EXISTS Teams;
+        # DROP TABLE IF EXISTS Competitions;
+        # DROP TABLE IF EXISTS Stadiums;
         cur.execute("""
     
             DROP TABLE IF EXISTS Dribbles;
@@ -229,7 +240,6 @@ def dropTables():
             DROP TABLE IF EXISTS Teams;
             DROP TABLE IF EXISTS Competitions;
             DROP TABLE IF EXISTS Stadiums;
-
                     
         """)
 

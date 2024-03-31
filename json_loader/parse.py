@@ -1,6 +1,12 @@
 import json
 from connection import *
 
+relevantLeagues = ["La Liga", "Premier League"]
+relevantSeasons = ["2020/2021", "2019/2020", "2018/2019", "2003/2004"]
+competitionData = []
+matchIds = []
+
+
 def getCompetitionIds(competitions, relevantLeagues, relevantSeasons):
     relevantCompetitions = []
 
@@ -11,6 +17,7 @@ def getCompetitionIds(competitions, relevantLeagues, relevantSeasons):
     return relevantCompetitions
 
 def getMatchInfo(relevantIdPairs):
+    
     matchInfo = []
 
     for i in range(len(relevantIdPairs)):
@@ -21,6 +28,21 @@ def getMatchInfo(relevantIdPairs):
             matchInfo.append(json.load(read_file))
 
     return matchInfo
+
+def getMatchIds():
+    with open("./data/competitions.json", "r", encoding="utf-8") as read_file:
+        competitionData = json.load(read_file)
+
+        relevantIdPairs = getCompetitionIds(competitionData, relevantLeagues, relevantSeasons)
+
+        matchInfo = getMatchInfo(relevantIdPairs)
+
+        for index in matchInfo:
+            for match in index:
+                matchIds.append(match["match_id"])
+
+    return matchIds
+
 
 def getEventInfo(matchIds):
     eventInfo = []
@@ -52,7 +74,7 @@ def getLineupInfo(matchIds):
 
 
 
-    # BELOW: OLD PARSING TESTS:
+    # # BELOW: OLD PARSING TESTS:
     # relevantIdPairs = getCompetitionIds(competitionData, relevantLeagues, relevantSeasons)
 
     # # relevant match info
