@@ -44,8 +44,9 @@ def main():
             competitions_competition_youth.append(competition["competition_youth"])
             competitions_competition_international.append(competition["competition_international"])
             competitions_season_name.append(competition["season_name"])
-    
-    
+
+    dropTables()
+    createTables()
     
 
 
