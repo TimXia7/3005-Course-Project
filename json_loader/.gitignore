@@ -1,2 +1,5 @@
 parsedData
 data
+db_dump.sql
+dbexport.sql
+test.py

@@ -2,7 +2,6 @@ import json
 import time
 from datetime import datetime
 import psycopg
-from psycopg import errors
 
 from create import *
 from parse import *
@@ -12,8 +11,8 @@ from connection import *
 relevantLeagues = ["La Liga", "Premier League"]
 relevantSeasons = ["2020/2021", "2019/2020", "2018/2019", "2003/2004"]
 
-
 # json from competitions.json
+# We'll need competition data for other things, so might as well store it
 competitionData = []
 
 # json from the respective data folders. Only from relevent seasons, each of the 4 entries are json data of a season.
@@ -24,7 +23,7 @@ lineupInfo = []
 matchInfo = [] #initialized later, for later use, the array has 4 indexes for each of the seasons.
 matchIds = getMatchIds()
 
-# relevant info from competitions.json
+# relevant info from competitions.json, which we will need later
 competitions_competition_id = []
 competitions_season_id = []
 competitions_competition_name = []
@@ -50,8 +49,10 @@ def main():
         )
         cur = conn.cursor()  
 
+
         dropTables()
         createTables() 
+
 
         # COMPETITION TABLE:
         with open("./data/competitions.json", "r", encoding="utf-8") as read_file:
@@ -61,6 +62,7 @@ def main():
             competitionIds = getCompetitionIds(competitionData, relevantLeagues, relevantSeasons)
             matchInfo = getMatchInfo(competitionIds)
 
+            # Store the competition data for later
             for competition in competitionData:
                 competitions_competition_id.append(competition["competition_id"])
                 competitions_season_id.append(competition["season_id"])
@@ -93,40 +95,86 @@ def main():
         conn.commit()
 
 
-        # TEAMS, PLAYERS TABLE:
+        # To insert cards after matches
+        match_id_arr = []
+        card_player_id_arr = []
+        card_type_arr = []
+        reason_arr = []
+        card_time_arr = []
+        period_arr = []
+
+        # To insert lineups after matches
+        lineup_match_id = []
+        lineup_team_id = []
+
+        # To insert Player Positions after matches
+        position_player_id_arr = []
+        position_start_reason_arr = []
+        position_end_reason_arr = []
+        position_arr = []
+        from_date_arr = []
+        to_date_arr = []
+
+        
+
+        # TEAMS, PLAYERS, POSITIONS, LINEUPS, CARDS TABLE:
         dupeTeamId = []
-        dir = "./data/lineups/"
         for match_id in matchIds:
-            file_path = dir + str(match_id) + ".json"
+            file_path = "./data/lineups/" + str(match_id) + ".json"
 
             with open(file_path, "r", encoding="utf-8") as read_file:
                 data = json.load(read_file)
 
+                # Teams:
                 for team_data in data:
                     team_id = team_data['team_id']
                     team_name = team_data['team_name']
-                    team_country = team_data['lineup'][0]['country']['name']  # Assuming country data is the same for all players
+                    team_country = team_data['lineup'][0]['country']['name'] 
 
+                    # For Lineup table later:
+                    lineup_team_id.append(team_id)
+                    lineup_match_id.append(match_id)
 
                     if (team_id not in dupeTeamId):
                         cur.execute('INSERT INTO Teams (id, name, country) VALUES (%s, %s, %s)', (team_id, team_name, team_country))
                         dupeTeamId.append(team_data['team_id'])
 
-                    # Players here
-                    for player_info in team_data["lineup"]:
-                        player_id = player_info["player_id"]
-                        player_name = player_info["player_name"]
-                        player_nickname = player_info.get("player_nickname")
-                        jersey_number = player_info["jersey_number"]
-                        country = player_info["country"]["name"]
+                    # Players:
+                    for playerInfo in team_data["lineup"]:
+                        id =                playerInfo["player_id"]
+                        name =              playerInfo["player_name"]
+                        nickname =          playerInfo.get("player_nickname")
+                        jersey_number =     playerInfo["jersey_number"]
+                        country =           playerInfo["country"]["name"]
+
+                        positions = playerInfo.get("positions", [])
+                        for position in positions:
+                            position_player_id_arr.append(id)
+                            position_start_reason_arr.append(position.get("start_reason"))
+                            position_end_reason_arr.append(position.get("end_reason"))
+                            position_arr.append(position.get("position"))
+                            from_date_arr.append(position.get("from"))
+                            to_date_arr.append(position.get("to"))
 
                         # Insert unique player records into the Players table
                         cur.execute(
                             "INSERT INTO Players (id, name, nickname, jersey_number, country, team_id) "
                             "VALUES (%s, %s, %s, %s, %s, %s) "
                             "ON CONFLICT DO NOTHING",
-                            (player_id, player_name, player_nickname, jersey_number, country, team_id)
+                            (id, name, nickname, jersey_number, country, team_id)
                         )
+
+                        cards = playerInfo.get("cards", [])
+                        for card in cards:
+                            match_id_arr.append(match_id)
+                            card_player_id_arr.append(id)
+                            card_type_arr.append(card.get("card_type"))
+                            reason_arr.append(card.get("reason"))
+                            card_time_arr.append(card.get("time"))
+                            period_arr.append(card.get("period"))
+                            #create them after the matches table below
+
+
 
         conn.commit()
 
@@ -137,10 +185,12 @@ def main():
 
         for season in matchInfo:
             for match in season:
-                if "stadium" in match:
-                    stadium_id = match["stadium"]["id"]
-                    stadium_name = match["stadium"]["name"]
-                    stadium_country = match["stadium"]["country"]["name"]  
+                if "stadium" in match: #in case stadium is not listed
+                    
+                    stadium_id =        match["stadium"]["id"]
+                    stadium_name =      match["stadium"]["name"]
+                    stadium_country =   match["stadium"]["country"]["name"]  
+
                     if stadium_id not in dupeStadiumId:
                         cur.execute(
                             "INSERT INTO Stadiums (id, name, country) "
@@ -151,22 +201,44 @@ def main():
                 else:
                     stadium_id = None
 
+                #Managers:
+                
+                home_team_id = None
+                away_team_id = None
+                if "home_team" in match:
+                    home_team_id = match["home_team"]["home_team_id"]
+                if "away_team" in match:
+                      away_team_id = match["away_team"]["away_team_id"]
 
-                match_id = match["match_id"]
-                match_date = match["match_date"]
-                kick_off = match["kick_off"]
-                home_score = match["home_score"]
-                away_score = match["away_score"]
-                competition_stage_name = match["competition_stage"]["name"]
-                competition_id = match["competition"]["competition_id"]
-                season_id = match["season"]["season_id"]
-                home_id = match["home_team"]["home_team_id"]
-                away_id = match["away_team"]["away_team_id"]
+                for team_data in [match.get("home_team", {}), match.get("away_team", {})]: #one of these will be null!
+                    team_id = home_team_id if team_data.get("home_team_id") == home_team_id else away_team_id # So we get the right one!
+
+                    managers = team_data.get("managers", [])    #since there can be multiple managers
+                    for manager in managers:
+                        cur.execute(
+                            '''INSERT INTO Managers (id, name, nickname, date_of_birth, team_id, country)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT DO NOTHING''',
+                            (manager["id"], manager["name"], manager.get("nickname"), manager["dob"], team_id, manager["country"]["name"])
+                        )
+
+                #Matches:
+                match_id =                  match["match_id"]
+                match_date =                match["match_date"]
+                kick_off =                  match["kick_off"]
+                home_score =                match["home_score"]
+                away_score =                match["away_score"]
+                competition_stage_name =    match["competition_stage"]["name"]
+                competition_id =            match["competition"]["competition_id"]
+                season_id =                 match["season"]["season_id"]
+                home_id =                   match["home_team"]["home_team_id"]
+                away_id =                   match["away_team"]["away_team_id"]
 
                 if (match_id not in dupeMatchId):
                     cur.execute(
-                        "INSERT INTO Matches (id, date, kick_off, home_score, away_score, competition_stage_name, stadium_id, competition_id, season_id, home_id, away_id) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        '''INSERT INTO Matches (id, date, kick_off, home_score, away_score, competition_stage_name, 
+                        stadium_id, competition_id, season_id, home_id, away_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
                         (match_id, match_date, kick_off, home_score, away_score, competition_stage_name, stadium_id, competition_id, season_id, home_id, away_id)
                     )
                     dupeMatchId.append(match["match_id"])
@@ -174,7 +246,50 @@ def main():
         conn.commit()
 
 
-        #EVENTS TABLE:
+        # Now insert card, lineup, position, data from before, now we have match_ids to map to
+        card_data = zip(match_id_arr, card_player_id_arr, card_type_arr, reason_arr, card_time_arr, period_arr)
+        for tuple in card_data:
+            cur.execute(
+                '''INSERT INTO Cards (match_id, player_id, card_type, reason, time, period)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING''',
+                tuple
+            )
+
+        lineup_data = zip(lineup_team_id, lineup_match_id)
+        for tuple in lineup_data:
+            cur.execute(
+                '''INSERT INTO Lineups (team_id, match_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                ''',
+                tuple
+            )
+
+        conn.commit()
+
+        lineup_ids = []
+        cur.execute("SELECT id FROM Lineups")
+        db_lineup_ids = cur.fetchall()
+        for row in db_lineup_ids:
+            lineup_ids.append(row[0]) #since in our db, thats lineup_id
+
+        position_data = zip(lineup_ids, position_player_id_arr, position_start_reason_arr, position_end_reason_arr, position_arr, from_date_arr, to_date_arr)
+        for tuple in position_data:
+            cur.execute(
+                '''INSERT INTO PlayerPositions (lineup_id, player_id, start_reason, end_reason, position, from_date, to_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
+                ''',
+                tuple
+            )        
+
+
+
+        # EVENTS TABLE(S):
+        # Note, the user of creating objects for events and using .get with either None or False (depending on database value)
+        # This is because a lot of events are missing certain types of data, and we kept getting errors for it.
+        # get allows us to make a default value easily
         dupeEventId = []
         dir = "./data/events/"
         for match_id in matchIds:
@@ -184,122 +299,153 @@ def main():
                 data = json.load(read_file)          
         
                 for event in data:
-                    event_id = event["id"]
-                    index = event["index"]
-                    period = event["period"]
-                    timestamp_str = event["timestamp"]
-                    timestamp = datetime.strptime(timestamp_str, "%H:%M:%S.%f").time()
-                    minute = event["minute"]
-                    second = event["second"]
-                    possession = event["possession"]
-                    possession_team_id = event["possession_team"]["id"]
-                    event_type = event["type"]["name"]
-                    play_pattern = event["play_pattern"]["name"]
+                    if (event["id"] not in dupeEventId):
+                        event_id = event.get("id")
+                        dupeEventId.append(event.get("id"))
 
-                    if "position" in event:
-                        position = event["position"]["name"]
-                    else:
-                        position = None
+                        index =                 event.get("index")
+                        period =                event.get("period")
+                        timestamp_str =         event.get("timestamp")
+                        timestamp =             datetime.strptime(timestamp_str, "%H:%M:%S.%f").time() if timestamp_str else None  # Ensure it's a time object before inserting
+                        minute =                event.get("minute")
+                        second =                event.get("second")
+                        possession =            event.get("possession")
+                        possession_team_id =    event.get("possession_team", None).get("id")
+                        event_type =            event.get("type", None).get("name")
+                        play_pattern =          event.get("play_pattern", None).get("name")
 
-                    if "location" in event:
-                        location_x = event["location"][0]
-                        location_y = event["location"][1]
-                    else:
-                        location_x = None
-                        location_y = None
-
-                    if "player" in event:
-                        player_id = event["player"]["id"]
-                    else:
-                        player_id = None
-
-                    if "duration" in event:
-                        duration = event["duration"]
-                    else:
-                        duration = None
-        
-                    # Insert event record into the Events table
-                    if (event_id not in dupeEventId):
+                        if "position" in event:
+                            position = event["position"]["name"]
+                        else:
+                            position = None
+                        if "location" in event:
+                            location_x = event["location"][0]
+                            location_y = event["location"][1]
+                        else:
+                            location_x = None
+                            location_y = None
+                        if "player" in event:
+                            player_id = event["player"]["id"]
+                        else:
+                            player_id = None
+                        if "duration" in event:
+                            duration = event["duration"]
+                        else:
+                            duration = None
+            
                         cur.execute(
-                            "INSERT INTO Events (event_id, match_id, index, period, timestamp, minute, second, possession, "
-                            "possession_team_id, type, duration, play_pattern, position, location_x, location_y, player_id) "
-                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                            '''INSERT INTO Events (event_id, match_id, index, period, timestamp, minute, second, possession, 
+                            possession_team_id, type, duration, play_pattern, position, location_x, location_y, player_id) 
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''', 
                             (event_id, match_id, index, period, timestamp, minute, second, possession, possession_team_id,
                             event_type, duration, play_pattern, position, location_x, location_y, player_id)
                         )
                         dupeEventId.append(event_id)
                         
-                        # add corresponding data to the right event table
+
+                        # Shots:
                         if (event["type"]["name"] == "Shot"):
-                            end_location_x, end_location_y = event["shot"]["end_location"][:2]
-                            outcome = event["shot"]["outcome"]["name"]
-                            technique = event["shot"]["technique"]["name"]
-                            body_part = event["shot"]["body_part"]["name"]
-                            shot_type = event["shot"]["type"]["name"]
-                            xG = event["shot"]["statsbomb_xg"]
+
+                            end_location_x =                    event["shot"]["end_location"][0]
+                            end_location_y =                    event["shot"]["end_location"][1]
+                            outcome =                           event["shot"]["outcome"]["name"]
+                            technique =                         event["shot"]["technique"]["name"]
+                            body_part =                         event["shot"]["body_part"]["name"]
+                            shot_type =                         event["shot"]["type"]["name"]
+                            xG =                                event["shot"]["statsbomb_xg"]
 
                             if "shot" in event and event["shot"].get("first_time") is not None:
                                 first_time = event["shot"]["first_time"]
                             else:
                                 first_time = False
-
                             if "shot" in event and event["shot"].get("key_pass_id") is not None:
                                 key_pass_id = event["shot"]["key_pass_id"]
                             else:
                                 key_pass_id = None
 
                             cur.execute(
-                                "INSERT INTO Shots (event_id, end_location_x, end_location_y, key_pass_id, outcome, first_time, technique, body_part, type, xG) "
-                                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                                (event_id, end_location_x, end_location_y, key_pass_id, outcome, first_time, technique, body_part, shot_type, xG)
+                                '''INSERT INTO Shots (event_id, end_location_x, end_location_y, key_pass_id, outcome, 
+                                first_time, technique, body_part, type, xG) 
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
+                                (event_id, end_location_x, end_location_y, key_pass_id, outcome, first_time, 
+                                technique, body_part, shot_type, xG)
                             )
 
-                        # Now passes..
+                        # Passes:
+                        # for strings, empty dictionaries are used instead of None, this -> {}
                         if event["type"]["name"] == "Pass":
-                            pass_data = event.get("pass", {}) #A lot of data for passes, so a temporary object will help with organization.
-                            length = pass_data.get("length")
-                            angle = pass_data.get("angle")
-                            end_location_x, end_location_y = pass_data.get("end_location", [None, None])
-                            body_part = pass_data.get("body_part", {}).get("name")
-                            outcome = pass_data.get("outcome", {}).get("name")
-                            pass_type = pass_data.get("type", {}).get("name")
-                            height = pass_data.get("height", {}).get("name")
-                            switch_status = pass_data.get("switch", False)
-                            cross_status = pass_data.get("cross", False)
-                            cutback = pass_data.get("cut_back", False)
-                            through_ball = pass_data.get("through_ball", False)
-                            assist = pass_data.get("goal_assist", False)
-                            key_pass = pass_data.get("key_pass", False)
-                            aerial_won = pass_data.get("aerial_won", False)
-                            recipient_player_id = pass_data.get("recipient", {}).get("id")
+                            passData = event.get("pass", {}) 
+                            length = passData.get("length")
+                            angle = passData.get("angle")
+                            end_location_x, end_location_y = passData.get("end_location", [None, None])
+                            body_part = passData.get("body_part", {}).get("name")
+                            outcome = passData.get("outcome", {}).get("name")
+                            pass_type = passData.get("type", {}).get("name")
+                            height = passData.get("height", None).get("name")
+                            switch_status = passData.get("switch", False)
+                            cross_status = passData.get("cross", False)
+                            cutback = passData.get("cut_back", False)
+                            through_ball = passData.get("through_ball", False)
+                            assist = passData.get("goal_assist", False)
+                            key_pass = passData.get("key_pass", False)
+                            aerial_won = passData.get("aerial_won", False)
+                            recipient_player_id = passData.get("recipient", {}).get("id")
 
                             cur.execute(
-                                "INSERT INTO Passes (event_id, length, angle, end_location_x, end_location_y, body_part, outcome, type, height, switch_status, cross_status, cutback, through_ball, assist, key_pass, aerial_won, recipient_player_id) "
+                                '''
+                                INSERT INTO Passes (event_id, length, angle, end_location_x, end_location_y, 
+                                body_part, outcome, type, height, switch_status, cross_status, cutback, 
+                                through_ball, assist, key_pass, aerial_won, recipient_player_id) 
+                                '''
                                 "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                                (event_id, length, angle, end_location_x, end_location_y, body_part, outcome, pass_type, height, switch_status, cross_status, cutback, through_ball, assist, key_pass, aerial_won, recipient_player_id)
+                                (event_id, length, angle, end_location_x, end_location_y, body_part, outcome, pass_type, height, 
+                                 switch_status, cross_status, cutback, through_ball, assist, key_pass, aerial_won, recipient_player_id)
                             )
-                        else:
-                            # Handle case where event type is not "Pass"
-                            pass_data = None
 
 
-                        # same with dribbles...
+                        # Dribbles
                         if event["type"]["name"] == "Dribble":
-                            dribble_data = event.get("dribble", {})
-        
-                            outcome = dribble_data.get("outcome", {}).get("name")
-                            player_name = event["player"]["name"]
-                            location_x, location_y = event.get("location", [None, None])
-                            under_pressure = event.get("under_pressure", False)
+                            dribbleData = event.get("dribble", None)
+                            name = event["player"]["name"]
+                            underPressure = event.get("under_pressure", False)
+
+                            outcome = dribbleData.get("outcome", None).get("name")
+
                             complete = outcome == "Complete" 
                             
                             cur.execute(
-                                "INSERT INTO Dribbles (event_id, name, under_pressure, complete) "
-                                "VALUES (%s, %s, %s, %s)",
-                                (event_id, player_name, under_pressure, complete)
+                                '''INSERT INTO Dribbles (event_id, name, under_pressure, complete)
+                                VALUES (%s, %s, %s, %s)''',
+                                (event_id, name, underPressure, complete)
                             )
 
-                    conn.commit()
+
+                        #Foul Commutted and Cards (as they are associated):
+                        if event["type"]["name"] == "Foul Committed":
+                            foulData = event.get("foul_committed", {})
+                            type_id = event["type"]["id"]
+                            counterpress = foulData.get("counterpress", False)
+                            card = foulData.get("card", None) 
+                            offensive = foulData.get("offensive", False) 
+                            card_id = None
+                            if "card" in foulData:
+                                card_id = foulData["card"]["id"]
+
+                            cur.execute(
+                                '''
+                                 INSERT INTO FoulCommitted (event_id, foul_id, counterpress, offensive, card_id)
+                                 VALUES (%s, %s, %s, %s, %s)
+                                ''',
+                                (event_id, type_id, counterpress, offensive, card_id)
+                            )
+
+
+
+                        conn.commit()
+
+
+
+
 
         conn.commit()
 

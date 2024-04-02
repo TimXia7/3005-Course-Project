@@ -106,11 +106,11 @@ def createTables():
             );
                     
             CREATE TABLE Lineups (
-                id INT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 team_id INT,
                 match_id INT,
                 FOREIGN KEY (team_id) REFERENCES Teams(id),
-                FOREIGN KEY (match_id ) REFERENCES Matches(id)
+                FOREIGN KEY (match_id) REFERENCES Matches(id)
             );
                     
             CREATE TABLE PlayerPositions (
@@ -126,15 +126,17 @@ def createTables():
             );
 
             CREATE TABLE Cards (
-                id INT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
+                match_id INT,
                 player_id INT,
-                position VARCHAR(255),
-                from_period INT,
-                to_period INT,
-                start_reason VARCHAR(255),
-                end_reason VARCHAR(255),
-                FOREIGN KEY (player_id) REFERENCES Players(id)
+                card_type VARCHAR(255),
+                reason VARCHAR(255),
+                time VARCHAR(50),
+                period INT,
+                FOREIGN KEY (player_id) REFERENCES Players(id),
+                FOREIGN KEY (match_id) REFERENCES Matches(id)
             );
+
                     
             CREATE TABLE Shots (
                 event_id VARCHAR(255) PRIMARY KEY,
@@ -180,6 +182,15 @@ def createTables():
                 FOREIGN KEY (event_id) REFERENCES Events(event_id)
             );
 
+            CREATE TABLE FoulCommitted (
+                event_id VARCHAR(255) PRIMARY KEY,
+                foul_id INT,
+                counterpress BOOLEAN,
+                offensive BOOLEAN,
+                card_id INT,
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+
 
                     
         """)
@@ -211,36 +222,24 @@ def dropTables():
         )
         cur = conn.cursor()  
 
-        # All drops
-        # DROP TABLE IF EXISTS Dribbles;
-        # DROP TABLE IF EXISTS Passes;
-        # DROP TABLE IF EXISTS Shots;
-        # DROP TABLE IF EXISTS Cards;
-        # DROP TABLE IF EXISTS PlayerPositions;
-        # DROP TABLE IF EXISTS Lineups;
-        # DROP TABLE IF EXISTS Managers;
-        # DROP TABLE IF EXISTS Events;
-        # DROP TABLE IF EXISTS Players;
-        # DROP TABLE IF EXISTS Matches;
-        # DROP TABLE IF EXISTS Teams;
-        # DROP TABLE IF EXISTS Competitions;
-        # DROP TABLE IF EXISTS Stadiums;
         cur.execute("""
-    
+                    
             DROP TABLE IF EXISTS Dribbles;
             DROP TABLE IF EXISTS Passes;
             DROP TABLE IF EXISTS Shots;
-            DROP TABLE IF EXISTS Cards;
             DROP TABLE IF EXISTS PlayerPositions;
             DROP TABLE IF EXISTS Lineups;
             DROP TABLE IF EXISTS Managers;
+            DROP TABLE IF EXISTS FoulCommitted;
+            DROP TABLE IF EXISTS Cards;
             DROP TABLE IF EXISTS Events;
             DROP TABLE IF EXISTS Players;
             DROP TABLE IF EXISTS Matches;
             DROP TABLE IF EXISTS Teams;
             DROP TABLE IF EXISTS Competitions;
             DROP TABLE IF EXISTS Stadiums;
-                    
+
+   
         """)
 
         conn.commit()
