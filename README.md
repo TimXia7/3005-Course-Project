@@ -21,3 +21,8 @@ Python Script to Parse Data:
 - I needed the season_ids 90, 42, and 4 in subfolder 11, and season_id 44 in subfolder 2.
 
 - As a result, I got my match data from 90.json, 42.json, 4.json, and 44.json
+
+
+Additional Notes:
+
+1. All of the event types should be there. Note that most have no special attributes besides those already in the Event table (e.g. Ball Recovery), so they don't have their own table, but they are there!

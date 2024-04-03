@@ -191,6 +191,73 @@ def createTables():
                 FOREIGN KEY (event_id) REFERENCES Events(event_id)
             );
 
+            CREATE TABLE Clearances (
+                event_id VARCHAR(255) PRIMARY KEY,
+                out BOOLEAN,
+                under_pressure BOOLEAN,
+                body_part VARCHAR(50),
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+                    
+            CREATE TABLE BallReceipts (
+                event_id VARCHAR(255) PRIMARY KEY,
+                out BOOLEAN,
+                under_pressure BOOLEAN,
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+
+            CREATE TABLE FoulWon (
+                event_id VARCHAR(255) PRIMARY KEY,
+                under_pressure BOOLEAN,
+                foul_won BOOLEAN,
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+
+            CREATE TABLE Goalkeepers (
+                event_id VARCHAR(255) PRIMARY KEY,
+                goalkeeper_type VARCHAR(50),
+                outcome VARCHAR(50),
+                technique VARCHAR(50),
+                end_location_x FLOAT,
+                end_location_y FLOAT,
+                goalkeeper_pos VARCHAR(50),
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+                    
+            CREATE TABLE Carries (
+                event_id VARCHAR(255) PRIMARY KEY,
+                end_location_x FLOAT,
+                end_location_y FLOAT,
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+
+            CREATE TABLE Dispossessed (
+                event_id VARCHAR(255) PRIMARY KEY,
+                under_pressure BOOLEAN,
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+                    
+            CREATE TABLE Blocks (
+                event_id VARCHAR(255) PRIMARY KEY,
+                counterpress BOOLEAN,
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+                    
+            CREATE TABLE Fifties (
+                event_id VARCHAR(255) PRIMARY KEY,
+                under_pressure BOOLEAN,
+                outcome VARCHAR(50),
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+
+            CREATE TABLE Duels (
+                event_id VARCHAR(255) PRIMARY KEY,
+                under_pressure BOOLEAN,
+                outcome VARCHAR(50),
+                duel_type VARCHAR(50),
+                FOREIGN KEY (event_id) REFERENCES Events(event_id)
+            );
+
 
                     
         """)
@@ -224,14 +291,23 @@ def dropTables():
 
         cur.execute("""
                     
+            DROP TABLE IF EXISTS Clearances;
+            DROP TABLE IF EXISTS BallReceipts;
+            DROP TABLE IF EXISTS FoulWon;
+            DROP TABLE IF EXISTS Goalkeepers;
+            DROP TABLE IF EXISTS Carries;
+            DROP TABLE IF EXISTS Dispossessed;
+            DROP TABLE IF EXISTS Blocks;
+            DROP TABLE IF EXISTS Fifties;
+            DROP TABLE IF EXISTS Duels;             
             DROP TABLE IF EXISTS Dribbles;
             DROP TABLE IF EXISTS Passes;
             DROP TABLE IF EXISTS Shots;
             DROP TABLE IF EXISTS PlayerPositions;
-            DROP TABLE IF EXISTS Lineups;
-            DROP TABLE IF EXISTS Managers;
             DROP TABLE IF EXISTS FoulCommitted;
             DROP TABLE IF EXISTS Cards;
+            DROP TABLE IF EXISTS Lineups;
+            DROP TABLE IF EXISTS Managers;
             DROP TABLE IF EXISTS Events;
             DROP TABLE IF EXISTS Players;
             DROP TABLE IF EXISTS Matches;

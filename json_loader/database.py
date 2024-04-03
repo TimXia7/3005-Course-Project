@@ -440,6 +440,119 @@ def main():
                             )
 
 
+                        # Clearance
+                        if event["type"]["name"] == "Clearance":
+                            out = event.get("out", False)
+                            under_pressure = event.get("under_pressure", False)
+                            body_part = event["clearance"]["body_part"]["name"] if "clearance" in event else None
+                            cur.execute(
+                                '''INSERT INTO Clearances (event_id, out, under_pressure, body_part)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, out, under_pressure, body_part)
+                            )
+
+                        #BallReceipt
+                        if event["type"]["name"] == "Ball Receipt" or event["type"]["name"] == "Ball Receipt*":
+                            out = event.get("out", False)
+                            under_pressure = event.get("under_pressure", False)
+                            cur.execute(
+                                '''INSERT INTO BallReceipts (event_id, out, under_pressure)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, out, under_pressure)
+                            )
+
+                        #FoulWon
+                        if event["type"]["name"] == "Foul Won":
+                            under_pressure = event.get("under_pressure", False)
+                            defensiveWin = event.get("foul_won", {}).get("defensive", False) #return empty dicitonary instead of None to prevent errors.
+                            cur.execute(
+                                '''INSERT INTO FoulWon (event_id, under_pressure, foul_won)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, under_pressure, defensiveWin)
+                            )
+
+
+                        #GoalKeeper
+                        if event["type"]["name"] == "Goal Keeper":
+                            goalkeeperType = event["type"]["name"]
+                            outcome = event["goalkeeper"].get("outcome", {}).get("name", None)      #some default values since some are Null (even location at some point)
+                            technique = event["goalkeeper"].get("technique", {}).get("name", None)
+                            end_location_x, end_location_y = None, None
+                            if "location" in event: #look me over, may result in None still?
+                                end_location_x, end_location_y = event["location"]
+                            goalkeeperPos = event["goalkeeper"].get("position", {}).get("name", None)
+                            cur.execute(
+                                '''INSERT INTO Goalkeepers (event_id, goalkeeper_type, outcome, technique, end_location_x, end_location_y, goalkeeper_pos)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, goalkeeperType, outcome, technique, end_location_x, end_location_y, goalkeeperPos)
+                            )
+
+
+                        # Carries:
+                        if event["type"]["name"] == "Carry":
+                            end_location_x, end_location_y = None, None
+                            if "location" in event: #look me over, may result in None still?
+                                end_location_x, end_location_y = event["location"]                           
+                            cur.execute(
+                                '''INSERT INTO Carries (event_id, end_location_x, end_location_y)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, end_location_x, end_location_y)
+                            )
+
+
+                        # Dispossessed:
+                        if event["type"]["name"] == "Dispossessed":
+                            under_pressure = event.get("under_pressure", False)
+                            cur.execute(
+                                '''INSERT INTO Dispossessed (event_id, under_pressure)
+                                VALUES (%s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, under_pressure)
+                            )
+                        
+                        # Blocks:
+                        if event["type"]["name"] == "Block": 
+                            counterpress = event.get("counterpress", False)
+                            cur.execute(
+                                '''INSERT INTO Blocks (event_id, counterpress)
+                                VALUES (%s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, counterpress)
+                            )
+
+
+                        # 50:50
+                        if event["type"]["name"] == "50:50": 
+                            under_pressure = event.get("under_pressure", False)
+                            outcome = event.get("outcome", None).get("name")
+                            cur.execute(
+                                '''INSERT INTO Fifties (event_id, under_pressure, outcome)
+                                VALUES (%s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, under_pressure, outcome)
+                            )
+
+                        #Duels:
+                        if event["type"]["name"] == "Duel": 
+                            under_pressure = event.get("under_pressure", False)
+                            duel_type = None
+                            outcome = None
+                            if "duel" in event:
+                                if "type" in event["duel"]:
+                                    duel_type = event["duel"]["type"]["name"]
+                                if "outcome" in event["duel"]:
+                                    outcome = event["duel"]["outcome"]["name"]
+                            cur.execute(
+                                '''INSERT INTO Duels (event_id, under_pressure, outcome, duel_type)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (event_id) DO NOTHING''',
+                                (event_id, under_pressure, outcome, duel_type)
+                            )
 
                         conn.commit()
 
