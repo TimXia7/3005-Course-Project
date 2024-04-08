@@ -1,28 +1,34 @@
 # 3005-Course-Project
 
-Exporting the database (FINISH LATER):
+Project Members (2):
 
-- On windows, we had to modify the PATH environment variable, specifically adding the path:
-    - C:\Program Files\PostgreSQL\15\bin, or wherever the bin folder is located in your PostgreSQL folder
-
-and then enter in the following command (for us at least) to export it:
-
-pg_dump -U postgres -p 5433 FinalProject > dbexport.pgsql
-
-(-p is optional, my port number differed)
-
-this was done on a windows system, so I did not have access to sudo, instead I ran Windows Powershell as an administrator 
+    - Ryan Tran
+    - Tim Xia
 
 
-Python Script to Parse Data:
+In this repo, you should find the following:
 
-- Using the competitions.json file, I found that the match files I needed were in subfolder 11 for La Liga, and 2 for Premier League. 
+    1. The exported database called "dbexport.sql"
 
-- I needed the season_ids 90, 42, and 4 in subfolder 11, and season_id 44 in subfolder 2.
+    2. Source code used to load the json_data into the database, in the json_loader folder.
 
-- As a result, I got my match data from 90.json, 42.json, 4.json, and 44.json
+    3. "queries.py" which is the auto-grader script with SQL queries in the right places.
 
 
-Additional Notes:
+Data loading (json_loader):
 
-1. All of the event types should be there. Note that most have no special attributes besides those already in the Event table (e.g. Ball Recovery), so they don't have their own table, but they are there!
+    1. If you want to run this for yourself, make sure you have python3 and psycopg3 installed first.
+
+    2. If you insist on doing this, then you must have a database and server with matching information in the connection.py file:
+
+        hostname = 'localhost'
+        database = 'FinalProject2' 
+        username = 'postgres'
+        pwd = 'postgres'
+        port_id = 5433
+
+    3. Then run database.py with "python ./database.py"
+
+
+Happy Grading!
+
