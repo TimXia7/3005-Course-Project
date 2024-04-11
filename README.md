@@ -14,6 +14,9 @@ In this repo, you should find the following:
 
     3. "queries.py" which is the auto-grader script with SQL queries in the right places.
 
+    4. A diagrams folder, that technically shouldn't be there, but its just in case you need a higher resolution image for the diagrams. The ones in 
+    the brightspace submission can be hard to see. If not, ignore the folder.
+
 
 Data loading (json_loader):
 
