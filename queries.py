@@ -1,7 +1,7 @@
 # Created by Gabriel Martell
 
 '''
-Version 1.1 (04/02/2024)
+Version 1.11 (04/02/2024)
 =========================================================
 queries.py (Carleton University COMP3005 - Database Management Student Template Code)
 
@@ -128,8 +128,8 @@ def get_time(cursor, conn, sql_query):
         else:
             print("Execution Time not found in EXPLAIN ANALYZE output.")
             return f"NA"
-    except:
-        print("[ERROR] Error getting time.")
+    except Exception as error:
+        print(f"[ERROR] Error getting time.\n{error}")
 
 
 # Write the results into some Q_n CSV. If the is an error with the query, it is a INC result - Do NOT Modify
@@ -141,7 +141,7 @@ def write_csv(execution_time, cursor, conn, i):
         rows = cursor.fetchall()
         filename = f"{dir_path}/Q_{i}.csv"
 
-        with open(filename, 'w', newline='') as csvfile:
+        with open(filename, 'w', encoding='utf-8', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             
             # Write column names to the CSV file
