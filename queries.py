@@ -386,9 +386,8 @@ def Q_7(conn, execution_time):
     # Enter QUERY within the quotes:
 
     query = """ 
-        SELECT teams.name AS team, COUNT(*) AS number_of_through_balls FROM
+        SELECT players.name AS player_name, COUNT(*) AS number_of_through_balls FROM
             events JOIN players ON events.player_id = players.id
-            JOIN teams ON players.team_id = teams.id
             JOIN passes ON events.event_id = passes.event_id
             JOIN matches ON events.match_id = matches.id
             JOIN competitions ON competitions.competition_id = matches.competition_id
@@ -397,7 +396,7 @@ def Q_7(conn, execution_time):
             passes.through_ball = true AND
             competitions.competition_name = 'La Liga' AND
             competitions.season_name = '2020/2021'
-        GROUP BY teams.name
+        GROUP BY players.name
         ORDER BY number_of_through_balls DESC;
     """
 
